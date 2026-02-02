@@ -1,0 +1,86 @@
+export type MaterialType = 'CLIENT' | 'OWN';
+
+export interface Order {
+    id: string;
+    order_number: number;
+    order_date: string;
+    customer_name: string;
+    material_type: MaterialType;
+    user_id: string;
+    gst_enabled: boolean;
+    gst_rate: number;
+    gst_amount: number;
+    subtotal: number;
+    total_amount: number;
+    status: 'Pending' | 'In Progress' | 'Completed';
+    created_at: string;
+    updated_at: string;
+    items?: OrderItem[];
+}
+
+export interface OrderItem {
+    id: string;
+    order_id: string;
+    description: string;
+    quantity: number;
+    unit: string;
+    rate: number;
+    amount: number;
+    // Phase 2: Product link
+    product_id?: string;
+    weight?: number;
+    wastage_percent?: number;
+    labour_cost?: number;
+    // Phase 5: Karigar link
+    karigar_id?: string;
+    karigar_rate?: number;
+    karigar_quantity?: number;
+}
+
+export interface JobWorkItem {
+    id: string;
+    name: string;
+    unit: string;
+    default_rate: number;
+    is_active: boolean;
+}
+
+export interface Product {
+    id: string;
+    name: string;
+    category: string;
+    size: string | null;
+    default_weight: number;
+    wastage_percent: number;
+    labour_cost: number;
+    current_stock: number;
+    is_active: boolean;
+}
+
+export type StockType = 'RAW_IN' | 'RAW_OUT' | 'PRODUCTION' | 'WASTAGE' | 'ORDER_DEDUCTION' | 'ADJUSTMENT';
+export type StockItemType = 'RAW_SILVER' | 'FINISHED_GOODS' | 'WASTAGE';
+
+export interface StockTransaction {
+    id: string;
+    date: string;
+    type: StockType;
+    item_type: StockItemType;
+    product_id?: string;
+    quantity: number;
+    weight_gm?: number;
+    note?: string;
+    source?: string;
+    rate_at_time?: number;
+    wastage_percent?: number;
+    order_id?: string;
+    created_at: string;
+    user_id: string;
+}
+
+export interface StockSummary {
+    raw_silver: number;
+    wastage: number;
+    finished_goods_count: number;
+    finished_goods_weight: number;
+    total_value: number;
+}
