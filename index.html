@@ -4,7 +4,7 @@
 <head>
   <meta charset="UTF-8" />
   <link rel="icon" type="image/svg+xml" href="/vite.svg" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
 
   <!-- Google Fonts - Professional Typography -->
   <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -13,6 +13,21 @@
 
   <title>Jewellery ERP - Professional Management System</title>
   <meta name="description" content="Premium Jewellery Manufacturing & Shop Management ERP">
+
+  <style>
+    /* Prevent zoom on all devices */
+    html {
+      -webkit-text-size-adjust: 100%;
+      -ms-text-size-adjust: 100%;
+      text-size-adjust: 100%;
+      touch-action: manipulation;
+    }
+
+    body {
+      overflow-x: hidden;
+      max-width: 100vw;
+    }
+  </style>
 </head>
 
 <body>
