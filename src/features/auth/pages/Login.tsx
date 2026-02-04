@@ -10,6 +10,7 @@ export default function Login() {
     const [password, setPassword] = useState('')
     const [loading, setLoading] = useState(false)
     const [error, setError] = useState<string | null>(null)
+    const [isSignup, setIsSignup] = useState(false) // Toggle between login/signup
     const navigate = useNavigate()
 
     const handleLogin = async (e: React.FormEvent) => {
@@ -43,6 +44,39 @@ export default function Login() {
             // Reset rate limiter on successful login
             loginRateLimiter.reset('login')
             // Success - Redirect happens automatically via AuthProvider or we can force it
+            navigate('/', { replace: true })
+        }
+    }
+
+    const handleSignup = async (e: React.FormEvent) => {
+        e.preventDefault()
+        setLoading(true)
+        setError('')
+
+        // Validate email format
+        if (!validateEmail(email)) {
+            setError('Invalid email format / गलत ईमेल फॉर्मेट')
+            setLoading(false)
+            return
+        }
+
+        // Password validation
+        if (password.length < 6) {
+            setError('Password must be at least 6 characters / पासवर्ड कम से कम 6 अक्षर का होना चाहिए')
+            setLoading(false)
+            return
+        }
+
+        const { error } = await supabase.auth.signUp({
+            email,
+            password,
+        })
+
+        if (error) {
+            setError(error.message)
+            setLoading(false)
+        } else {
+            // Success - Auto login after signup
             navigate('/', { replace: true })
         }
     }
@@ -97,7 +131,7 @@ export default function Login() {
                     </div>
                 )}
 
-                <form onSubmit={handleLogin} style={{ display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>
+                <form onSubmit={isSignup ? handleSignup : handleLogin} style={{ display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>
                     <div>
                         <label style={{ display: 'block', marginBottom: '0.5rem', fontSize: '0.875rem', fontWeight: 600, color: '#374151' }}>
                             Email Address
@@ -171,14 +205,67 @@ export default function Login() {
                         {loading ? (
                             <>
                                 <Loader2 size={20} className="animate-spin" />
-                                Signing In...
+                                {isSignup ? 'Creating Account...' : 'Signing In...'}
                             </>
                         ) : (
                             <>
-                                Sign In <ArrowRight size={20} />
+                                {isSignup ? 'Create Account' : 'Sign In'} <ArrowRight size={20} />
                             </>
                         )}
                     </button>
+
+                    {/* Toggle between Login/Signup */}
+                    <div style={{
+                        marginTop: '1.5rem',
+                        textAlign: 'center',
+                        fontSize: '0.9rem',
+                        color: '#6B7280'
+                    }}>
+                        {isSignup ? (
+                            <>
+                                Already have an account?{' '}
+                                <button
+                                    type="button"
+                                    onClick={() => {
+                                        setIsSignup(false)
+                                        setError('')
+                                    }}
+                                    style={{
+                                        background: 'none',
+                                        border: 'none',
+                                        color: '#166534',
+                                        fontWeight: 600,
+                                        cursor: 'pointer',
+                                        textDecoration: 'underline'
+                                    }}
+                                >
+                                    Sign In
+                                </button>
+                            </>
+                        ) : (
+                            <>
+                                Don't have an account?{' '}
+                                <button
+                                    type="button"
+                                    onClick={() => {
+                                        setIsSignup(true)
+                                        setError('')
+                                    }}
+                                    style={{
+                                        background: 'none',
+                                        border: 'none',
+                                        color: '#166534',
+                                        fontWeight: 600,
+                                        cursor: 'pointer',
+                                        textDecoration: 'underline'
+                                    }}
+                                >
+                                    Create Account
+                                </button>
+                            </>
+                        )}
+                    </div>
+
                     <style>{`
                         .animate-spin {
                             animation: spin 1s linear infinite;
