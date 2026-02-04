@@ -57,7 +57,7 @@ export default function AccountingDashboard() {
             {/* Breakdown Table */}
             <div style={{ background: 'white', padding: '1.5rem', borderRadius: '12px', border: '1px solid var(--color-border)' }}>
                 <h3 style={{ marginTop: 0, marginBottom: '1rem', borderBottom: '1px solid #f1f5f9', paddingBottom: '0.5rem' }}>Income & Expense Breakdown</h3>
-                <table style={{ width: '100%', borderCollapse: 'collapse' }}>
+                <table style={{ width: '100%', borderCollapse: 'collapse' }} className="mobile-card-view">
                     <tbody>
                         <Row label="Job Work Income" value={data.jobWorkIncome} icon={<ArrowUpRight size={16} color="var(--color-success)" />} />
                         <Row label="Product Sales Income" value={data.productSalesIncome} icon={<ArrowUpRight size={16} color="var(--color-success)" />} />

@@ -484,7 +484,7 @@ export default function VendorMaster() {
 
                     {/* Transactions Table */}
                     <div style={{ overflowX: 'auto', background: 'white', borderRadius: '16px', border: '1px solid var(--color-border)', boxShadow: '0 4px 6px -1px rgba(0,0,0,0.05)' }}>
-                        <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'left' }}>
+                        <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'left' }} className="mobile-card-view">
                             <thead style={{ background: '#f8fafc', borderBottom: '2px solid #e2e8f0' }}>
                                 <tr>
                                     <th style={thStyle}>Date / तारीख</th>

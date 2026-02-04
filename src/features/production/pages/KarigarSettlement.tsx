@@ -181,7 +181,7 @@ export default function KarigarSettlement() {
                             {records.length === 0 ? (
                                 <div style={{ padding: '2rem', textAlign: 'center', color: '#94a3b8' }}>No pending records.</div>
                             ) : (
-                                <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.9rem' }}>
+                                <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.9rem' }} className="mobile-card-view">
                                     <tbody>
                                         {records.map(r => (
                                             <tr key={r.id} style={{ borderBottom: '1px solid #f1f5f9' }}>

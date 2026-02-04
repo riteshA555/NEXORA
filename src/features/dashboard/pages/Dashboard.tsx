@@ -269,7 +269,7 @@ export default function Dashboard() {
             </header>
 
             {/* Top Stat Row */}
-            <div style={GRID_STYLE}>
+            <div style={GRID_STYLE} className="grid-responsive">
                 {/* 1. Total Silver Stock */}
                 <CardSkeleton loading={loading}>
                     <div style={cardHeaderStyle}>
@@ -352,8 +352,8 @@ export default function Dashboard() {
                             {t('view_all', settings.language as any)} <ChevronRight size={14} />
                         </Link>
                     </div>
-                    <div style={{ overflowX: 'auto' }}>
-                        <table style={{ width: '100%', borderCollapse: 'collapse' }}>
+                    <div style={{ overflowX: 'auto' }} className="table-responsive">
+                        <table style={{ width: '100%', borderCollapse: 'collapse' }} className="mobile-card-view">
                             <thead>
                                 <tr style={{ background: 'var(--color-bg)', borderBottom: '1px solid var(--color-border)' }}>
                                     <th style={{ padding: '12px 24px', textAlign: 'left', fontSize: '12px', color: 'var(--color-text-secondary)', fontWeight: 600 }}>{t('order_id', settings.language as any)}</th>

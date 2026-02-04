@@ -443,7 +443,7 @@ export default function GSTReports() {
                     </h3>
 
                     <div style={{ overflowX: 'auto' }}>
-                        <table style={{ width: '100%', borderCollapse: 'collapse' }}>
+                        <table style={{ width: '100%', borderCollapse: 'collapse' }} className="mobile-card-view">
                             <thead>
                                 <tr style={{ borderBottom: '2px solid #f8fafc' }}>
                                     <th style={thStyle}>Invoice</th>

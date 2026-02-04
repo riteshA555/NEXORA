@@ -266,7 +266,7 @@ export default function CustomerMaster() {
                     </div>
 
                     <div style={{ background: 'white', borderRadius: '12px', overflow: 'hidden', border: '1px solid #e2e8f0' }}>
-                        <table style={{ width: '100%', borderCollapse: 'collapse' }}>
+                        <table style={{ width: '100%', borderCollapse: 'collapse' }} className="mobile-card-view">
                             <thead style={{ background: '#f8fafc', borderBottom: '1px solid #e2e8f0' }}>
                                 <tr>
                                     <th style={{ padding: '1rem', textAlign: 'left', fontSize: '0.8rem', color: '#64748b' }}>DATE</th>

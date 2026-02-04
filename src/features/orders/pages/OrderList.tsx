@@ -131,7 +131,7 @@ export default function OrderList() {
 
             {orders.length > 0 && (
                 <div style={{ overflowX: 'auto', background: 'white', borderRadius: '8px', border: '1px solid var(--color-border)' }}>
-                    <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'left' }}>
+                    <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'left' }} className="mobile-card-view">
                         <thead style={{ background: 'var(--color-bg)', borderBottom: '1px solid var(--color-border)' }}>
                             <tr>
                                 <th style={{ padding: '0.75rem 1rem', width: '40px' }}>
