@@ -702,9 +702,16 @@ tr:hover {
     display: none;
   }
 
-  /* Responsive grid */
+  /* Responsive grid - single column on tablet */
   .grid-responsive {
-    grid-template-columns: repeat(auto-fit, minmax(250px, 1fr)) !important;
+    grid-template-columns: 1fr !important;
+    gap: 1rem !important;
+  }
+
+  /* Sidebar positioning */
+  .sidebar-desktop {
+    position: fixed !important;
+    z-index: 50 !important;
   }
 
   /* Touch-friendly buttons */
@@ -763,6 +770,17 @@ tr:hover {
   /* Responsive dashboard cards */
   .dashboard-card {
     min-width: 100% !important;
+  }
+
+  /* Grid to single column on mobile */
+  .grid-responsive {
+    grid-template-columns: 1fr !important;
+  }
+
+  /* Smaller sidebar */
+  .sidebar-desktop {
+    width: 85vw !important;
+    max-width: 300px !important;
   }
 }
 
