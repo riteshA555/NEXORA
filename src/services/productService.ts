@@ -1,6 +1,7 @@
 import { supabase } from '../supabaseClient'
 import { Product } from '../types'
 import { cacheStore } from './cacheStore'
+import { sanitizeString, validateNumber } from '../shared/utils/validation'
 
 const PRODUCTS_CACHE_KEY = 'products_list'
 
@@ -26,9 +27,22 @@ const fetchFreshProducts = async () => {
 }
 
 export const updateProduct = async (id: string, updates: Partial<Product>) => {
+    // Sanitize string inputs
+    const sanitized: Partial<Product> = { ...updates }
+    if (updates.name) sanitized.name = sanitizeString(updates.name, 100)
+    if (updates.category) sanitized.category = sanitizeString(updates.category, 50)
+    if (updates.size) sanitized.size = sanitizeString(updates.size, 50)
+
+    // Validate numeric inputs
+    if (updates.default_weight !== undefined) {
+        const validated = validateNumber(updates.default_weight, 0, 100000)
+        if (validated === null) throw new Error('Invalid weight')
+        sanitized.default_weight = validated
+    }
+
     const { error } = await supabase
         .from('products')
-        .update(updates)
+        .update(sanitized)
         .eq('id', id)
     if (error) throw error
     cacheStore.invalidate(PRODUCTS_CACHE_KEY)

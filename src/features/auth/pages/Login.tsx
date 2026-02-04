@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import { supabase } from '../../../supabaseClient'
 import { useNavigate } from 'react-router-dom'
+import { validateEmail, loginRateLimiter } from '../../../shared/utils/validation'
 import { Lock, Mail, Loader2, ArrowRight } from 'lucide-react'
 
 // Simple Login Page
@@ -14,7 +15,21 @@ export default function Login() {
     const handleLogin = async (e: React.FormEvent) => {
         e.preventDefault()
         setLoading(true)
-        setError(null)
+        setError('')
+
+        // Validate email format
+        if (!validateEmail(email)) {
+            setError('Invalid email format / गलत ईमेल फॉर्मेट')
+            setLoading(false)
+            return
+        }
+
+        // Rate limiting - max 5 attempts per minute
+        if (!loginRateLimiter.isAllowed('login', 5, 60000)) {
+            setError('Too many login attempts. Please try again later / बहुत सारे प्रयास। कृपया बाद में प्रयास करें')
+            setLoading(false)
+            return
+        }
 
         const { error } = await supabase.auth.signInWithPassword({
             email,
@@ -25,6 +40,8 @@ export default function Login() {
             setError('Invalid email or password / गलत ईमेल या पासवर्ड')
             setLoading(false)
         } else {
+            // Reset rate limiter on successful login
+            loginRateLimiter.reset('login')
             // Success - Redirect happens automatically via AuthProvider or we can force it
             navigate('/', { replace: true })
         }
