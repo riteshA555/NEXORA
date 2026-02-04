@@ -1,16 +1,88 @@
-import { useState, useEffect, useCallback } from 'react'
+import { useState, useEffect, useCallback, useMemo, memo } from 'react'
 import { getLatestRate, SilverRate } from '../services/rateService'
 import { getMetalInventory, getFinishedGoodsWeight, MetalInventory } from '../services/inventoryService'
 import { getOrders } from '../services/orderService'
-import { Scale, TrendingUp, Wrench, ShoppingCart, FileText, Package, Plus, Receipt, Calculator, Eye, ChevronRight } from 'lucide-react'
+import { Scale, TrendingUp, Wrench, ShoppingCart, FileText, Package, Plus, Receipt, Calculator, ChevronRight } from 'lucide-react'
 import { Link } from 'react-router-dom'
 import { useSettings } from '../components/SettingsContext'
 import { t } from '../utils/i18n'
 import { Order } from '../types'
 import { supabase } from '../supabaseClient'
 
+// --- Optimizations: Static Styles & Components Extracted ---
+
+const StatusBadge = memo(({ status }: { status: string }) => {
+    const getStyle = (s: string) => {
+        switch (s) {
+            case 'Completed': return { bg: 'var(--color-success-light)', text: 'var(--color-success)', border: 'var(--color-success)' }
+            case 'Pending': return { bg: 'var(--color-warning-light)', text: 'var(--color-warning)', border: 'var(--color-warning)' }
+            default: return { bg: 'var(--color-warning-light)', text: 'var(--color-warning)', border: 'var(--color-warning)' } // 'In Progress'
+        }
+    }
+    const style = getStyle(status)
+    return (
+        <span style={{
+            padding: '4px 12px',
+            borderRadius: '20px',
+            fontSize: '0.75rem',
+            fontWeight: 600,
+            backgroundColor: style.bg,
+            color: style.text,
+            border: `1px solid ${style.border}`
+        }}>
+            {status}
+        </span>
+    )
+});
+
+const TypeBadge = memo(({ type }: { type: string }) => {
+    const isJobWork = type === 'CLIENT'
+    return (
+        <span style={{
+            padding: '4px 10px',
+            borderRadius: '6px',
+            fontSize: '0.7rem',
+            fontWeight: 700,
+            backgroundColor: isJobWork ? 'var(--color-bg)' : 'var(--color-warning-light)',
+            color: isJobWork ? 'var(--color-text-secondary)' : 'var(--color-warning)',
+            textTransform: 'uppercase'
+        }}>
+            {isJobWork ? 'Job Work' : 'Sale'}
+        </span>
+    )
+});
+
+const StockItem = memo(({ label, hindiLabel, value, percent, color }: any) => (
+    <div>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-end', marginBottom: '0.5rem' }}>
+            <div style={{ fontSize: '0.85rem', fontWeight: 600, color: '#475569' }}>
+                {label}<br />
+                <small style={{ fontWeight: 400, color: '#94a3b8' }}>{hindiLabel}</small>
+            </div>
+            <div style={{ fontSize: '0.9rem', fontWeight: 700, color: '#1e293b' }}>{value}</div>
+        </div>
+        <div style={{ height: '8px', background: '#f1f5f9', borderRadius: '4px', overflow: 'hidden' }}>
+            <div style={{ width: `${percent}%`, height: '100%', background: color, borderRadius: '4px' }}></div>
+        </div>
+    </div>
+));
+
+// Extracted styles to avoid recreation object on every render
+const PAGE_CONTAINER_STYLE = { maxWidth: '1400px', margin: '0 auto', paddingBottom: '3rem' };
+const HEADER_STYLE = { marginBottom: '2rem' };
+const H1_STYLE = { margin: 0, fontSize: 'var(--text-4xl)', fontWeight: 'var(--font-bold)', color: 'var(--color-text-primary)' };
+const SUBTITLE_STYLE = { margin: '0.5rem 0 0', color: 'var(--color-text-secondary)', fontSize: 'var(--text-base)' };
+const GRID_STYLE = { display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '1.25rem', marginBottom: '2.5rem' };
+const MAIN_GRID_STYLE = { display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(340px, 1fr))', gap: '2rem' }; // Responsive fix: changed 1fr 340px to auto-fit
+const TABLE_CONTAINER_STYLE = { background: 'var(--color-surface)', borderRadius: '16px', border: '1px solid var(--color-border)', overflow: 'hidden', boxShadow: 'var(--shadow-sm)' };
+const TABLE_HEADER_BAR_STYLE = { padding: '1.25rem 1.5rem', borderBottom: '1px solid var(--color-border)', display: 'flex', justifyContent: 'space-between', alignItems: 'center' };
+const VIEW_ALL_LINK_STYLE = { fontSize: '0.85rem', color: 'var(--color-primary)', textDecoration: 'none', fontWeight: 600, display: 'flex', alignItems: 'center', gap: '4px' };
+
+
 export default function Dashboard() {
     const { settings } = useSettings()
+
+    // State
     const [rate, setRate] = useState<SilverRate | null>(null)
     const [inventory, setInventory] = useState<MetalInventory[]>([])
     const [finishedWeight, setFinishedWeight] = useState(0)
@@ -18,27 +90,25 @@ export default function Dashboard() {
     const [recentRates, setRecentRates] = useState<SilverRate[]>([])
     const [loading, setLoading] = useState(true)
 
-    // SWR Helper Functions
-    const getRateHistory = async () => {
+    // Helper for Rate History
+    const getRateHistory = useCallback(async () => {
         const { data, error } = await supabase.from('silver_rates').select('*').order('rate_date', { ascending: true })
         if (error) throw error
         return data as SilverRate[]
-    }
-
-    useEffect(() => {
-        loadData()
     }, [])
 
     const loadData = useCallback(async () => {
-        // Background refresh always keeps data fresh
         try {
+            // Parallel fetching is good, keep it
             const [r, inv, fw, ords, hist] = await Promise.all([
                 getLatestRate(),
                 getMetalInventory(),
                 getFinishedGoodsWeight(),
-                getOrders(),
+                getOrders(), // Potential optimization: fetch only recent orders if API supports it
                 getRateHistory()
             ])
+
+            // Batch updates are automatic in React 18, but good to be aware
             setRate(r)
             setInventory(inv)
             setFinishedWeight(fw)
@@ -49,111 +119,84 @@ export default function Dashboard() {
         } finally {
             setLoading(false)
         }
-    }, [])
+    }, [getRateHistory])
 
     useEffect(() => {
-        // Initial load
         loadData()
     }, [loadData])
 
-    const calculateChange = (current: number, previous: number) => {
-        if (!previous || previous === 0) return 0
-        return ((current - previous) / previous) * 100
-    }
+    // --- Optimization: Memoize Expensive Calculations ---
 
-    const prevRate = recentRates.length > 1 ? recentRates[recentRates.length - 2].rate_10g : (rate?.rate_10g || 0)
-    const rateChangePercent = rate ? calculateChange(rate.rate_10g, prevRate) : 0
-    const rateChangeAmt = rate ? (rate.rate_10g - prevRate) * 100 : 0
+    const stats = useMemo(() => {
+        const currentMonth = new Date().getMonth()
+        const currentYear = new Date().getFullYear()
 
+        const monthlyOrders = orders.filter(o => {
+            const d = new Date(o.order_date)
+            return d.getMonth() === currentMonth && d.getFullYear() === currentYear
+        })
 
-    // Don't block rendering - show data immediately
+        const rawSilverWeight = inventory.reduce((sum, item) => sum + (item.weight_gm || 0), 0)
+        const totalSilverStockKg = (rawSilverWeight + finishedWeight) / 1000
 
-    // Calculations
-    const currentMonth = new Date().getMonth()
-    const currentYear = new Date().getFullYear()
+        const pendingOrders = orders.filter(o => o.status !== 'Completed')
+        const pendingValue = pendingOrders.reduce((sum, o) => sum + (o.total_amount || 0), 0)
+        const pendingCount = pendingOrders.length
 
-    const monthlyOrders = orders.filter(o => {
-        const d = new Date(o.order_date)
-        return d.getMonth() === currentMonth && d.getFullYear() === currentYear
-    })
+        const monthlySales = monthlyOrders.reduce((sum, o) => sum + (o.total_amount || 0), 0)
+        const gstPayable = monthlyOrders.reduce((sum, o) => sum + (o.gst_amount || 0), 0)
 
-    const rawSilverWeight = inventory.reduce((sum, item) => sum + (item.weight_gm || 0), 0)
-    const totalSilverStockKg = (rawSilverWeight + finishedWeight) / 1000
+        const productsMadeCount = monthlyOrders.reduce((sum, o) => {
+            return sum + (o.items?.reduce((iSum, item) => iSum + (item.quantity || 0), 0) || 0)
+        }, 0)
 
-    const pendingOrders = orders.filter(o => o.status !== 'Completed')
-    const pendingValue = pendingOrders.reduce((sum, o) => sum + (o.total_amount || 0), 0)
+        // Rate Calculations
+        const prevRate = recentRates.length > 1 ? recentRates[recentRates.length - 2].rate_10g : (rate?.rate_10g || 0)
+        const rateChangePercent = rate ? ((rate.rate_10g - prevRate) / (prevRate || 1)) * 100 : 0 // avoid div by 0
+        const rateChangeAmt = rate ? (rate.rate_10g - prevRate) * 100 : 0
+        const currentRateKg = rate ? rate.rate_10g * 100 : 0
 
-    const monthlySales = monthlyOrders.reduce((sum, o) => sum + (o.total_amount || 0), 0)
-    const gstPayable = monthlyOrders.reduce((sum, o) => sum + (o.gst_amount || 0), 0)
-
-    const productsMadeCount = monthlyOrders.reduce((sum, o) => {
-        return sum + (o.items?.reduce((iSum, item) => iSum + (item.quantity || 0), 0) || 0)
-    }, 0)
-
-    // Helper for Status Badge
-    const StatusBadge = ({ status }: { status: string }) => {
-        const colors: any = {
-            'Completed': { bg: 'var(--color-success-light)', text: 'var(--color-success)', border: 'var(--color-success)' },
-            'Pending': { bg: 'var(--color-warning-light)', text: 'var(--color-warning)', border: 'var(--color-warning)' },
-            'In Progress': { bg: 'var(--color-warning-light)', text: 'var(--color-warning)', border: 'var(--color-warning)' }
+        return {
+            totalSilverStockKg,
+            currentRateKg,
+            rateChangePercent,
+            rateChangeAmt,
+            pendingCount,
+            pendingValue,
+            monthlySales,
+            gstPayable,
+            productsMadeCount,
+            rawSilverWeight
         }
-        const style = colors[status] || colors['Pending']
-        return (
-            <span style={{
-                padding: '4px 12px',
-                borderRadius: '20px',
-                fontSize: '0.75rem',
-                fontWeight: 600,
-                backgroundColor: style.bg,
-                color: style.text,
-                border: `1px solid ${style.border}`
-            }}>
-                {status}
-            </span>
-        )
-    }
+    }, [orders, inventory, finishedWeight, recentRates, rate])
 
-    const TypeBadge = ({ type }: { type: string }) => {
-        const isJobWork = type === 'CLIENT'
-        return (
-            <span style={{
-                padding: '4px 10px',
-                borderRadius: '6px',
-                fontSize: '0.7rem',
-                fontWeight: 700,
-                backgroundColor: isJobWork ? 'var(--color-bg)' : 'var(--color-warning-light)',
-                color: isJobWork ? 'var(--color-text-secondary)' : 'var(--color-warning)',
-                textTransform: 'uppercase'
-            }}>
-                {isJobWork ? 'Job Work' : 'Sale'}
-            </span>
-        )
-    }
+    // Memoize the sliced orders to prevent re-slicing on every render
+    const recentOrders = useMemo(() => orders.slice(0, 6), [orders])
+
+    // Find specific inventory items only when inventory changes
+    const rawSilverItem = useMemo(() => inventory.find(i => i.name === 'Raw Silver')?.weight_gm || 0, [inventory]);
+    const wastageItem = useMemo(() => inventory.find(i => i.name === 'Wastage Silver')?.weight_gm || 0, [inventory]);
+
 
     return (
-        <div style={{ maxWidth: '1400px', margin: '0 auto', paddingBottom: '3rem' }}>
+        <div style={PAGE_CONTAINER_STYLE}>
             {/* Header */}
-            <header style={{ marginBottom: '2rem' }}>
-                <h1 style={{ margin: 0, fontSize: 'var(--text-4xl)', fontWeight: 'var(--font-bold)', color: 'var(--color-text-primary)' }}>Dashboard</h1>
-                <p style={{ margin: '0.5rem 0 0', color: 'var(--color-text-secondary)', fontSize: 'var(--text-base)' }}>
+            <header style={HEADER_STYLE}>
+                <h1 style={H1_STYLE}>Dashboard</h1>
+                <p style={SUBTITLE_STYLE}>
                     Welcome back! Here's your business overview. / व्यापार की स्थिति
                 </p>
             </header>
 
-            {/* Top Stat Row - 6 Cards */}
-            <div style={{
-                display: 'grid',
-                gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))',
-                gap: '1.25rem',
-                marginBottom: '2.5rem'
-            }}>
+            {/* Top Stat Row */}
+            <div style={GRID_STYLE}>
                 {/* 1. Total Silver Stock */}
                 <CardSkeleton loading={loading}>
                     <div style={cardHeaderStyle}>
                         <span>Total Silver Stock<br /><small style={{ color: 'var(--color-text-muted)' }}>कुल चांदी स्टॉक</small></span>
                         <div style={{ ...iconBoxStyle, background: 'var(--color-warning-light)' }}><Scale size={20} color="var(--color-warning)" /></div>
                     </div>
-                    <div style={cardValueStyle}>{totalSilverStockKg.toFixed(1)} kg</div>
+                    <div style={cardValueStyle}>{stats.totalSilverStockKg.toFixed(1)} kg</div>
                     <div style={{ fontSize: 'var(--text-xs)', color: 'var(--color-success)', fontWeight: 'var(--font-semibold)' }}>+2.3 kg this month</div>
                 </CardSkeleton>
 
@@ -163,17 +206,17 @@ export default function Dashboard() {
                         <span>Today's Rate<br /><small style={{ color: 'var(--color-text-muted)' }}>आज का भाव</small></span>
                         <div style={{ ...iconBoxStyle, background: 'var(--color-warning-light)' }}><TrendingUp size={20} color="var(--color-warning)" /></div>
                     </div>
-                    <div style={cardValueStyle}>₹{(rate?.rate_10g ? rate.rate_10g * 100 : 0).toLocaleString()}/kg</div>
+                    <div style={cardValueStyle}>₹{stats.currentRateKg.toLocaleString()}/kg</div>
                     <div style={{
                         fontSize: 'var(--text-xs)',
-                        color: rateChangePercent >= 0 ? 'var(--color-success)' : '#ef4444',
+                        color: stats.rateChangePercent >= 0 ? 'var(--color-success)' : '#ef4444',
                         fontWeight: 'var(--font-semibold)',
                         display: 'flex',
                         alignItems: 'center',
                         gap: '4px'
                     }}>
-                        {rateChangePercent >= 0 ? '▲' : '▼'}
-                        ₹{Math.abs(rateChangeAmt).toLocaleString()} ({Math.abs(rateChangePercent).toFixed(1)}%)
+                        {stats.rateChangePercent >= 0 ? '▲' : '▼'}
+                        ₹{Math.abs(stats.rateChangeAmt).toLocaleString()} ({Math.abs(stats.rateChangePercent).toFixed(1)}%)
                     </div>
                 </CardSkeleton>
 
@@ -183,8 +226,8 @@ export default function Dashboard() {
                         <span>Pending Job Work<br /><small style={{ color: 'var(--color-text-muted)' }}>पेंडिंग जॉब वर्क</small></span>
                         <div style={{ ...iconBoxStyle, background: 'var(--color-bg)' }}><Wrench size={20} color="var(--color-text-secondary)" /></div>
                     </div>
-                    <div style={cardValueStyle}>{pendingOrders.length} Orders</div>
-                    <div style={{ fontSize: 'var(--text-xs)', color: 'var(--color-text-secondary)', fontWeight: 'var(--font-medium)' }}>Worth ₹{pendingValue.toLocaleString()}</div>
+                    <div style={cardValueStyle}>{stats.pendingCount} Orders</div>
+                    <div style={{ fontSize: 'var(--text-xs)', color: 'var(--color-text-secondary)', fontWeight: 'var(--font-medium)' }}>Worth ₹{stats.pendingValue.toLocaleString()}</div>
                 </CardSkeleton>
 
                 {/* 4. Monthly Sales */}
@@ -193,7 +236,7 @@ export default function Dashboard() {
                         <span>Monthly Sales<br /><small style={{ color: 'var(--color-text-muted)' }}>मासिक बिक्री</small></span>
                         <div style={{ ...iconBoxStyle, background: 'var(--color-warning-light)' }}><ShoppingCart size={20} color="var(--color-warning)" /></div>
                     </div>
-                    <div style={cardValueStyle}>₹{monthlySales.toLocaleString()}</div>
+                    <div style={cardValueStyle}>₹{stats.monthlySales.toLocaleString()}</div>
                     <div style={{ fontSize: 'var(--text-xs)', color: 'var(--color-success)', fontWeight: 'var(--font-semibold)' }}>+18% from last month</div>
                 </CardSkeleton>
 
@@ -203,7 +246,7 @@ export default function Dashboard() {
                         <span>GST Payable<br /><small style={{ color: 'var(--color-text-muted)' }}>GST देय</small></span>
                         <div style={{ ...iconBoxStyle, background: 'var(--color-warning-light)' }}><FileText size={20} color="var(--color-warning)" /></div>
                     </div>
-                    <div style={cardValueStyle}>₹{gstPayable.toLocaleString()}</div>
+                    <div style={cardValueStyle}>₹{stats.gstPayable.toLocaleString()}</div>
                     <div style={{ fontSize: 'var(--text-xs)', color: 'var(--color-text-secondary)', fontWeight: 'var(--font-medium)' }}>Due by 20th {new Date().toLocaleString('default', { month: 'short' })}</div>
                 </CardSkeleton>
 
@@ -213,19 +256,19 @@ export default function Dashboard() {
                         <span>Products Made<br /><small style={{ color: 'var(--color-text-muted)' }}>उत्पादन</small></span>
                         <div style={{ ...iconBoxStyle, background: 'var(--color-warning-light)' }}><Package size={20} color="var(--color-warning)" /></div>
                     </div>
-                    <div style={cardValueStyle}>{productsMadeCount} pcs</div>
+                    <div style={cardValueStyle}>{stats.productsMadeCount} pcs</div>
                     <div style={{ fontSize: 'var(--text-xs)', color: 'var(--color-text-secondary)', fontWeight: 'var(--font-medium)' }}>This month</div>
                 </CardSkeleton>
             </div>
 
             {/* Main Content Grid */}
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr 340px', gap: '2rem' }}>
+            <div style={MAIN_GRID_STYLE}>
 
                 {/* Left: Recent Orders */}
-                <div style={{ background: 'var(--color-surface)', borderRadius: '16px', border: '1px solid var(--color-border)', overflow: 'hidden', boxShadow: 'var(--shadow-sm)' }}>
-                    <div style={{ padding: '1.25rem 1.5rem', borderBottom: '1px solid var(--color-border)', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                <div style={TABLE_CONTAINER_STYLE}>
+                    <div style={TABLE_HEADER_BAR_STYLE}>
                         <h3 style={{ fontSize: '1.1rem', fontWeight: 700 }}>{t('recent_orders', settings.language as any)}</h3>
-                        <Link to="/orders" style={{ fontSize: '0.85rem', color: 'var(--color-primary)', textDecoration: 'none', fontWeight: 600, display: 'flex', alignItems: 'center', gap: '4px' }}>
+                        <Link to="/orders" style={VIEW_ALL_LINK_STYLE}>
                             {t('view_all', settings.language as any)} <ChevronRight size={14} />
                         </Link>
                     </div>
@@ -241,7 +284,7 @@ export default function Dashboard() {
                                 </tr>
                             </thead>
                             <tbody>
-                                {orders.slice(0, 6).map((order) => {
+                                {recentOrders.map((order) => {
                                     const firstItem = order.items?.[0]
                                     return (
                                         <tr key={order.id} style={{ borderBottom: '1px solid #f8fafc' }}>
@@ -309,7 +352,7 @@ export default function Dashboard() {
                             <StockItem
                                 label="Raw Silver Stock"
                                 hindiLabel="कच्ची चांदी"
-                                value={`${(inventory.find(i => i.name === 'Raw Silver')?.weight_gm || 0) / 1000} kg`}
+                                value={`${(rawSilverItem / 1000).toFixed(1)} kg`}
                                 percent={75}
                                 color="#f59e0b"
                             />
@@ -317,7 +360,7 @@ export default function Dashboard() {
                             <StockItem
                                 label="Wastage Silver"
                                 hindiLabel="वेस्टेज चांदी"
-                                value={`${(inventory.find(i => i.name === 'Wastage Silver')?.weight_gm || 0) / 1000} kg`}
+                                value={`${(wastageItem / 1000).toFixed(1)} kg`}
                                 percent={35}
                                 color="#94a3b8"
                             />
@@ -339,7 +382,7 @@ export default function Dashboard() {
     )
 }
 
-// Sub-components & Styles
+// Keep expensive style objects outside to prevent recreation
 const cardStyle: React.CSSProperties = {
     background: 'var(--color-surface)',
     border: '1px solid var(--color-border)',
@@ -380,18 +423,6 @@ const cardValueStyle: React.CSSProperties = {
     marginBottom: 'var(--spacing-sm)'
 }
 
-const thStyle: React.CSSProperties = {
-    background: 'var(--color-bg)',
-    borderBottom: '2px solid var(--color-border)',
-    padding: 'var(--spacing-md)',
-    textAlign: 'left',
-    fontSize: 'var(--text-xs)',
-    color: 'var(--color-text-secondary)',
-    textTransform: 'uppercase',
-    letterSpacing: '0.05em',
-    fontWeight: 'var(--font-semibold)'
-}
-
 const tdStyle: React.CSSProperties = {
     padding: '1.25rem 1rem',
     fontSize: 'var(--text-sm)',
@@ -416,22 +447,7 @@ const actionButtonStyle: React.CSSProperties = {
     boxShadow: 'var(--shadow-sm)'
 }
 
-const StockItem = ({ label, hindiLabel, value, percent, color }: any) => (
-    <div>
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-end', marginBottom: '0.5rem' }}>
-            <div style={{ fontSize: '0.85rem', fontWeight: 600, color: '#475569' }}>
-                {label}<br />
-                <small style={{ fontWeight: 400, color: '#94a3b8' }}>{hindiLabel}</small>
-            </div>
-            <div style={{ fontSize: '0.9rem', fontWeight: 700, color: '#1e293b' }}>{value}</div>
-        </div>
-        <div style={{ height: '8px', background: '#f1f5f9', borderRadius: '4px', overflow: 'hidden' }}>
-            <div style={{ width: `${percent}%`, height: '100%', background: color, borderRadius: '4px' }}></div>
-        </div>
-    </div>
-)
-
-const CardSkeleton = ({ loading, children }: { loading: boolean, children: React.ReactNode }) => {
+const CardSkeleton = memo(({ loading, children }: { loading: boolean, children: React.ReactNode }) => {
     if (!loading) return <div style={cardStyle}>{children}</div>
 
     return (
@@ -456,4 +472,4 @@ const CardSkeleton = ({ loading, children }: { loading: boolean, children: React
             `}</style>
         </div>
     )
-}
+});

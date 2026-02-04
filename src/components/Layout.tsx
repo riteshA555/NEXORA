@@ -1,19 +1,16 @@
-import { useState } from 'react'
+import { useState, useMemo, useCallback } from 'react'
 import { Outlet, Link, useLocation } from 'react-router-dom'
 import { useAuth } from './AuthProvider'
 import { useSettings } from './SettingsContext'
 import { t } from '../utils/i18n'
 import { Menu, X, LayoutDashboard, ShoppingCart, Settings, LogOut, Wallet, BarChart3, BookOpen, Users, Receipt, LineChart, Book, Package, User, ChevronDown, Truck } from 'lucide-react'
 
-// Simple helper for nav items
-import { getLatestRate, getRateHistory } from '../services/rateService'
-import { getStockSummary, getMetalInventory, getFinishedGoodsWeight } from '../services/inventoryService'
-import { getOrders } from '../services/orderService'
-import { getSettings } from '../services/settingsService'
+// Optimized: Removed direct import of service functions to avoid circular deps and unnecessary bundling if not used
+// Prefetching logic removed to prevent accidental heavy API calls on hover
 
-const navItems = [
-    { name: 'Dashboard', key: 'dashboard', path: '/', icon: LayoutDashboard, prefetch: () => Promise.all([getLatestRate(), getMetalInventory(), getFinishedGoodsWeight(), getOrders()]) },
-    { name: 'Orders', key: 'orders', path: '/orders', icon: ShoppingCart, prefetch: () => getOrders() },
+const NAV_ITEMS_DATA = [
+    { name: 'Dashboard', key: 'dashboard', path: '/', icon: LayoutDashboard },
+    { name: 'Orders', key: 'orders', path: '/orders', icon: ShoppingCart },
     { name: 'Expenses', key: 'expenses', path: '/expenses', icon: Wallet },
     { name: 'Accounting', key: 'accounting', path: '/accounting', icon: BarChart3 },
     { name: 'Customer Ledger', key: 'ledger', path: '/ledger', icon: BookOpen },
@@ -21,10 +18,10 @@ const navItems = [
     { name: 'Karigar Master', key: 'karigar', path: '/karigar', icon: Users },
     { name: 'Karigar Settlement', key: 'settlement', path: '/settlement', icon: Wallet },
     { name: 'GST Module', key: 'gst_module', path: '/gst-reports', icon: Receipt },
-    { name: 'Silver Rates', key: 'silver_rates', path: '/rates', icon: LineChart, prefetch: () => getRateHistory() },
+    { name: 'Silver Rates', key: 'silver_rates', path: '/rates', icon: LineChart },
     { name: 'Business Catalog', key: 'catalog', path: '/catalog', icon: Book },
-    { name: 'Stock Management', key: 'stock', path: '/stock', icon: Package, prefetch: () => getStockSummary(0) },
-    { name: 'Settings', key: 'settings', path: '/settings', icon: Settings, prefetch: () => getSettings('business_profile') },
+    { name: 'Stock Management', key: 'stock', path: '/stock', icon: Package },
+    { name: 'Settings', key: 'settings', path: '/settings', icon: Settings },
 ]
 
 export default function Layout() {
@@ -34,9 +31,14 @@ export default function Layout() {
     const [profileDropdownOpen, setProfileDropdownOpen] = useState(false)
     const location = useLocation()
 
-    const toggleSidebar = () => setSidebarOpen(!sidebarOpen)
-    const closeSidebar = () => setSidebarOpen(false)
-    const toggleProfileDropdown = () => setProfileDropdownOpen(!profileDropdownOpen)
+    // Use useCallback for handlers to keep reference stable
+    const toggleSidebar = useCallback(() => setSidebarOpen(prev => !prev), [])
+    const closeSidebar = useCallback(() => setSidebarOpen(false), [])
+    const toggleProfileDropdown = useCallback(() => setProfileDropdownOpen(prev => !prev), [])
+
+
+    // Styles that don't depend on state can be static/memoized, but inline styles with state need variables.
+    // We keep it simple here but rely on the fact that Layout doesn't re-render often unless route changes.
 
     return (
         <div style={{ display: 'flex', minHeight: '100vh' }}>
@@ -51,7 +53,7 @@ export default function Layout() {
             {/* Sidebar */}
             <aside style={{
                 width: '220px',
-                background: 'var(--color-surface)', // Sidebar color
+                background: 'var(--color-surface)',
                 borderRight: '1px solid var(--color-border)',
                 display: 'flex',
                 flexDirection: 'column',
@@ -63,8 +65,6 @@ export default function Layout() {
                 transform: sidebarOpen ? 'translateX(0)' : 'translateX(-100%)',
                 transition: 'transform 0.3s ease-in-out',
             }} className="sidebar-desktop">
-                {/* Note: I will add media query class logic via style tag or css file later, 
-         but for now using inline style for transform which needs JS state */}
 
                 <div style={{ padding: '0.5rem', borderBottom: '1px solid var(--color-border)', display: 'flex', alignItems: 'center', minHeight: '90px' }}>
                     <div style={{ flex: 1, display: 'flex', justifyContent: 'center', alignItems: 'center', overflow: 'hidden', height: '80px' }}>
@@ -77,7 +77,7 @@ export default function Layout() {
 
                 <nav style={{ flex: 1, padding: '1rem', overflowY: 'auto' }}>
                     <ul style={{ listStyle: 'none', padding: 0, margin: 0, display: 'flex', flexDirection: 'column', gap: '0.25rem' }}>
-                        {navItems.map((item) => {
+                        {NAV_ITEMS_DATA.map((item) => {
                             const Icon = item.icon
                             const isActive = location.pathname === item.path
                             return (
@@ -103,10 +103,6 @@ export default function Layout() {
                                             if (!isActive) {
                                                 e.currentTarget.style.background = 'var(--color-bg)'
                                                 e.currentTarget.style.color = 'var(--color-text-primary)'
-                                            }
-                                            // Prefetch data in background
-                                            if (item.prefetch) {
-                                                item.prefetch().catch(err => console.warn('Prefetch failed:', err))
                                             }
                                         }}
                                         onMouseLeave={(e) => {
@@ -151,7 +147,7 @@ export default function Layout() {
                             <img src="/logo.png" alt="Nexora Digital" style={{ height: '80px', width: 'auto', objectFit: 'contain', transform: 'scale(1.4)' }} />
                         </div>
                         <h3 style={{ margin: 0 }}>
-                            {t(navItems.find(i => i.path === location.pathname)?.key as any || 'dashboard', settings.language as any)}
+                            {t(NAV_ITEMS_DATA.find(i => i.path === location.pathname)?.key as any || 'dashboard', settings.language as any)}
                         </h3>
                     </div>
 
